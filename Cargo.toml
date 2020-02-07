@@ -8,3 +8,5 @@ edition = "2018"
 
 [dependencies]
 nix = "0.17.0"
+arraymap = "0.1.1"
+libc = "0.2.66"

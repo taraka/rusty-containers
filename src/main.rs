@@ -1,12 +1,27 @@
-use nix::unistd::execv;
-use std::ffi::{CString, CStr};
+use libc::execv;
+use std::ffi::CString;
+use std::ptr;
 
 fn main() {
-    let binary_path = CStr::from_bytes_with_nul(b"/bin/ls\0").unwrap();
-    let binName = CStr::from_bytes_with_nul(b"ls\0").unwrap();
-    let options = CStr::from_bytes_with_nul(b"-la\0").unwrap();
-    let params = CStr::from_bytes_with_nul(b"/\0").unwrap();
-
-    execv(binary_path, &[binName, options, params]);
+    entry_point("/bin/ls", &["ls", "-la", "/"]);
     return()
+}
+
+fn entry_point(program: &str, args: &[&str]) -> () {
+
+    let program_cstring = CString::new(program.as_bytes()).unwrap();
+
+    let arg_cstrings = args.into_iter().map(|&arg| {
+        CString::new(arg.as_bytes())
+    }).collect::<Result<Vec<_>, _>>().unwrap();
+
+    let mut arg_charptrs: Vec<_> = arg_cstrings.iter().map(|arg| {
+        arg.as_ptr()
+    }).collect();
+
+    arg_charptrs.push(ptr::null());
+
+    unsafe {
+        execv(program_cstring.as_ptr(), arg_charptrs.as_ptr());
+    }
 }
