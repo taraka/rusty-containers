@@ -3,8 +3,13 @@ use std::ffi::CString;
 use std::ptr;
 
 fn main() {
-    do_clone();
-    entry_point("/usr/bin/hostname", &["hostname"]);
+    let is_child = do_clone();
+    if is_child {
+        entry_point("/usr/bin/hostname", &["hostname"]);
+        return(); // Not needed as exec will holt execution but just here for clarity
+    }
+
+    println!("I'm here in the parent process");
     return()
 }
 
@@ -27,6 +32,7 @@ fn entry_point(program: &str, args: &[&str]) -> () {
     }
 }
 
-fn do_clone() {
-    unsafe { fork(); }
+fn do_clone() -> bool {
+    let pid = unsafe { fork() };
+    return pid != 0;
 }
