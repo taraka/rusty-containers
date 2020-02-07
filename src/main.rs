@@ -1,8 +1,9 @@
-use libc::execv;
+use libc::{execv, fork};
 use std::ffi::CString;
 use std::ptr;
 
 fn main() {
+    do_clone();
     entry_point("/usr/bin/hostname", &["hostname"]);
     return()
 }
@@ -24,4 +25,8 @@ fn entry_point(program: &str, args: &[&str]) -> () {
     unsafe {
         execv(program_cstring.as_ptr(), arg_charptrs.as_ptr());
     }
+}
+
+fn do_clone() {
+    unsafe { fork(); }
 }
