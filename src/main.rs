@@ -3,7 +3,7 @@ use std::ffi::CString;
 use std::ptr;
 
 fn main() {
-    entry_point("/bin/ls", &["ls", "-la", "/"]);
+    entry_point("/usr/bin/hostname", &["hostname"]);
     return()
 }
 
