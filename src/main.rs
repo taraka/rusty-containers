@@ -6,37 +6,51 @@ use std::ffi::{CString, CStr};
 use std::str::from_utf8;
 use std::path::Path;
 use std::{time, thread};
-use nix::sys::wait::waitpid;
+use nix::sys::wait::{waitpid, WaitPidFlag, WaitStatus};
 
 const BASE_DIR: &str = "/home/tom/Code/rusty-containers/containers";
-static name: &str = "container1";
 
 fn main() {
-    create_container();
+    create_container("container1");
 }
 
-fn create_container() {
+fn create_container(name: &str) {
     let container_base = String::from(BASE_DIR) + "/" + name;
     mkdir::<str>(&container_base[..], stat::Mode::S_IRWXU | stat::Mode::S_IRGRP | stat::Mode::S_IXGRP);
 
-    let child = do_clone();
-    println!("Child PID: {}", child);
-    waitpid(child, None);
+    let child = do_clone(name);
+    println!("Child PID (on host): {}", child);
+
+    //thread::sleep(time::Duration::from_secs(60));
 
 
+    loop {
+        match waitpid(child, None).unwrap() {
+            WaitStatus::Exited(pid, i) => {
+                println!("Exited");
+                break;
+            },
 
-//    sleep(1);
+            WaitStatus::Signaled(pid, sig, b) => println!("Signaled, {}", sig),
 
-//    let ref mut buf: [u8; 256] = [0; 256];
-//    gethostname(buf).expect(-"Getting hostname failed");
-//
-//    println!("I'm here in the parent process on : {}", from_utf8(buf).expect("Get hostname from string failed"));
+            WaitStatus::Stopped(pid, sig) => println!("Stopped {}", sig),
+
+            WaitStatus::PtraceEvent(pid, sig, i) => println!("PtraceEvent"),
+
+            WaitStatus::PtraceSyscall(pid) => println!("PtraceSyscall"),
+
+            WaitStatus::Continued(pid)=> println!("Continue"),
+
+            WaitStatus::StillAlive => println!("Still Alive")
+        }
+    }
+
+
     return()
 }
 
-fn child() -> isize {
+fn child(name: &str) -> isize {
 
-    //thread::sleep(time::Duration::from_secs(180));
     let container_base = String::from(BASE_DIR) + "/" + name;
 
     chroot(&container_base[..]);
@@ -49,15 +63,17 @@ fn child() -> isize {
     println!("Child PID: {}", getpid());
     println!("Parent PID: {}", getppid());
 
-    entry_point("/bin/ls", &["ls", "-la", "/proc"]);
+    thread::sleep(time::Duration::from_secs(1));
+
+    entry_point("/bin/sh", &["sh"]);
 
     return 0;
 }
 
-fn do_clone() -> Pid {
+fn do_clone(name: &str) -> Pid {
     const STACK_SIZE: usize = 1024 * 1024;
     let ref mut stack: [u8; STACK_SIZE] = [0; STACK_SIZE];
-    let cbk = Box::new(|| child());
+    let cbk = Box::new(|| child(name));
 
     let flag_bits: CloneFlags =
         CloneFlags::CLONE_NEWCGROUP |
@@ -72,11 +88,8 @@ fn do_clone() -> Pid {
 }
 
 fn entry_point(program: &str, args: &[&str]) -> () {
-
     let program_cstring = cstring(program);
     let arg_charptrs = cstring_array(args);
-
-
     execv(program_cstring.as_c_str(), arg_charptrs.as_slice()).expect("Exec failed");
 }
 
