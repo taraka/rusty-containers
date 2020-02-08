@@ -1,16 +1,24 @@
-use nix::unistd::execv;
+use nix::unistd::{execv, gethostname, sethostname, sleep};
 use nix::sched;
 use std::ffi::{CString, CStr};
+use std::str::from_utf8;
 
 fn main() {
 
     do_clone();
 
-    println!("I'm here in the parent process");
+    sleep(1);
+
+    let ref mut buf: [u8; 256] = [0; 256];
+    gethostname(buf).expect("Getting hostname failed");
+
+    println!("I'm here in the parent process on : {}", from_utf8(buf).expect("Get hostname failed"));
     return()
 }
 
 fn child() -> isize {
+
+    sethostname("newhostname").expect("Setting hostname failed");
     entry_point("/bin/hostname", &["hostname"]);
     return 0;
 }
